@@ -2,7 +2,6 @@ package com.czp.lb.proxy;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -33,15 +32,15 @@ import org.slf4j.LoggerFactory;
 public class LBProxyServer extends BaseFilter {
 
 	private int port;
-	private String reouteType;
 	private TCPNIOTransport server;
+	private LBRouteStrategy strategy;
 	private static Logger log = LoggerFactory.getLogger(LBProxyServer.class);
 	private List<LBBackendServer> backends = new ArrayList<LBBackendServer>();
 	private Map<String, LBProxySession> sessions = new ConcurrentHashMap<String, LBProxySession>();
 
-	public LBProxyServer(int port, String reouteType) {
+	public LBProxyServer(int port, LBRouteStrategy strategy) {
 		this.port = port;
-		this.reouteType = reouteType;
+		this.strategy = strategy;
 	}
 
 	/**
@@ -111,7 +110,7 @@ public class LBProxyServer extends BaseFilter {
 			Object add = conn.getPeerAddress();
 			log.debug("accept client: {}", add);
 			InetSocketAddress addr = (InetSocketAddress) add;
-			session.createBackendConn(chooseBackendSer(addr));
+			session.createBackendConn(strategy.doReoute(backends, addr));
 			sessions.put(add.toString(), session);
 		} catch (Exception e) {
 			log.error("accept error:", e);
@@ -169,20 +168,5 @@ public class LBProxyServer extends BaseFilter {
 		server.shutdownNow();
 		backends.clear();
 		sessions.clear();
-	}
-
-	/**
-	 * 根据用户选择的负载策略选择后端服务
-	 * 
-	 * @param clientAddr
-	 * @return
-	 */
-	private synchronized SocketAddress chooseBackendSer(InetSocketAddress addr) {
-		if (reouteType.equals("ip_hash")) {
-			int hashCode = addr.getHostString().hashCode();
-			return backends.get(hashCode % backends.size()).getAddr();
-		}
-		int index = (int) (System.nanoTime() % backends.size());
-		return backends.get(index).getAddr();
 	}
 }

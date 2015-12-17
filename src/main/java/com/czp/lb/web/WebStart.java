@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 
 import com.czp.lb.proxy.LBBackendServer;
 import com.czp.lb.proxy.LBProxyServer;
+import com.czp.lb.proxy.LBRouteStrategy;
 import com.czp.lb.zk.LBZKClient;
 
 /**
@@ -127,7 +128,11 @@ public class WebStart {
 		String reouteType = (String) globs.get(0)[0];
 		String lbPort = (String) globs.get(0)[1];
 		Integer lbport = Integer.valueOf(lbPort);
-		LBProxyServer proxy = new LBProxyServer(lbport, reouteType);
+		LBRouteStrategy strategy = LBRouteStrategy.ROUND;
+		if (reouteType.equals("ip_hash")) {
+			strategy = LBRouteStrategy.IP_HASH;
+		}
+		LBProxyServer proxy = new LBProxyServer(lbport, strategy);
 
 		for (Object[] obj : hosts) {
 			String host = obj[0].toString();
